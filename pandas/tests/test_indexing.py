@@ -705,6 +705,32 @@ class TestIndexing(tm.TestCase):
         df = df_orig.copy()
         df.loc[indexer]*=2.0
         assert_frame_equal(df.loc[indexer],2.0*df_orig.loc[indexer])
+    
+    def test_loc_getitem_dups(self):
+        
+        # GH 9519
+        # On sorted index:
+        s = Series([1, 2, 3], index=(1,1,2))
+        assert_series_equal(s.loc[1], Series([1,2], index=(1,1)))
+        # Also for non-duplicated label:
+        assert_series_equal(s.loc[2], Series([3], index=(2,)))
+        
+        # On unsorted index:
+        s = Series([1, 2, 3], index=(1,2,1))
+        assert_series_equal(s.loc[1], Series([1,3], index=(1,1)))
+        # Also for non-duplicated label:
+        assert_series_equal(s.loc[2], Series([2], index=(2,)))
+        
+        # On multiple dimensions:
+        values = [[1,2,3], [4,5,6], [7,8,9]]
+        df = DataFrame(values, index=(1,1,2), columns=(3,4,3))
+        expected = DataFrame(values[:2], index=(1,1), columns=(3,4,3))
+        assert_frame_equal(df.loc[1], expected)
+        
+        values = [[v[1]] for v in values]
+        expected = DataFrame(values, index=(1,1,2), columns=(4,))
+        assert_frame_equal(df.loc[:,4], expected)
+        
 
     def test_iloc_setitem_dups(self):
 
