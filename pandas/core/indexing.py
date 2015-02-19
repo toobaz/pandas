@@ -1311,6 +1311,40 @@ class _LocIndexer(_LocationIndexer):
             return self._get_slice_axis(key, axis=axis)
         elif is_bool_indexer(key):
             return self._getbool_axis(key, axis=axis)
+        elif isinstance(key, list):
+            index_label = self.obj._AXIS_NAMES[axis]
+            kwargs = {n : getattr(self.obj, n) for n in self.obj._AXIS_NUMBERS}
+            # Replace:
+            kwargs[index_label] = key
+            if getattr(self.obj, index_label).is_unique:
+                val_list = [np.expand_dims(self._getitem_axis(subkey, axis=axis).values, axis=axis) for subkey in key]
+                val = np.concatenate(val_list, axis=axis)
+                return self.obj.__class__(val, **kwargs)
+            # OK, there are duplicate items - and we don't know which ones are
+            # among the selected ones (if any):
+            # ( https://github.com/pydata/pandas/issues/9519 )
+            val_list = []
+            single_parts = []
+            duplic_parts = []
+
+            for idx, subkey in enumerate(key):
+                v = self._getitem_axis(subkey, axis=axis)
+                if len(v.shape) != len(self.obj.shape):
+                    single_parts.append(idx)
+                else:
+                    duplic_parts.append(idx)
+                val_list.append(v)
+
+            if not duplic_parts:
+                # Shortcut: no duplicates were selected
+                return self.obj.__class__(val_list, **kwargs)
+            for idx in single_parts:
+                # Upcast singletons:
+                kwargs = {index_label : [key[idx]]}
+                val_list[idx] = np.expand_dims(retval[idx].value, axis=axis)
+            kwargs[index_label] = np.concatenate([getattr(v, index_label).values for v in val_list])
+            return self.obj.__class__(np.concatenate([v.values for v in val_list], axis=axis),
+                                      **kwargs)
         elif is_list_like_indexer(key):
 
             # GH 7349
