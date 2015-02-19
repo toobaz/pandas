@@ -1319,6 +1319,13 @@ class _LocIndexer(_LocationIndexer):
             if getattr(self.obj, index_label).is_unique:
                 val_list = [np.expand_dims(self._getitem_axis(subkey, axis=axis).values, axis=axis) for subkey in key]
                 val = np.concatenate(val_list, axis=axis)
+                if len(kwargs) > 2 and axis != 0:
+                    # Cope with
+                    # https://github.com/pydata/pandas/issues/8906
+                    to_transpose = [2, 1, 0]
+                    to_transpose.remove(axis)
+                    to_transpose.insert(axis, axis)
+                    val = val.transpose(*to_transpose)
                 return self.obj.__class__(val, **kwargs)
             # OK, there are duplicate items - and we don't know which ones are
             # among the selected ones (if any):
