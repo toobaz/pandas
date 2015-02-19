@@ -167,8 +167,6 @@ cdef class IndexEngine:
             diff = right - left
             if diff == 0:
                 raise KeyError(val)
-            elif diff == 1:
-                return left
             else:
                 return slice(left, right)
         else:
@@ -198,8 +196,6 @@ cdef class IndexEngine:
 
         if count == 0:
             raise KeyError(val)
-        if count == 1:
-            return last_true
 
         return result
 
@@ -403,8 +399,6 @@ cdef class Int64Engine(IndexEngine):
 
         if count == 0:
             raise KeyError(val)
-        if count == 1:
-            return last_true
 
         return result
 
@@ -440,8 +434,6 @@ cdef class Float64Engine(IndexEngine):
 
         if count == 0:
             raise KeyError(val)
-        if count == 1:
-            return last_true
 
         return result
 
