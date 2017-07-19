@@ -558,7 +558,10 @@ def _normalize(table, normalize, margins, margins_name='All'):
     elif margins is True:
 
         column_margin = table.loc[:, margins_name].drop(margins_name)
-        index_margin = table.loc[margins_name, :].drop(margins_name)
+        if isinstance(table.index, MultiIndex):
+            index_margin = table.loc[margins_name, :].iloc[0].drop(margins_name)        # GH 17029 and possibly more
+        else:
+            index_margin = table.loc[margins_name, :].drop(margins_name)
         table = table.drop(margins_name, axis=1).drop(margins_name)
         # to keep index and columns names
         table_index_names = table.index.names
@@ -582,8 +585,11 @@ def _normalize(table, normalize, margins, margins_name='All'):
             column_margin = column_margin / column_margin.sum()
             index_margin = index_margin / index_margin.sum()
             index_margin.loc[margins_name] = 1
-            table = concat([table, column_margin], axis=1)
-            table = table.append(index_margin)
+            table[margins_name] = column_margin
+            if isinstance(table.index, MultiIndex):
+                table.loc[(margins_name, ''), :] = index_margin                 # GH 17024 ?
+            else:
+                table.loc[margins_name] = index_margin
 
             table = table.fillna(0)
 
