@@ -454,7 +454,7 @@ def crosstab(index, columns, values=None, rownames=None, colnames=None,
         raise ValueError("values cannot be used without an aggfunc.")
 
     from pandas import DataFrame
-    df = DataFrame(data, index=common_idx)
+    df = DataFrame(data, index=common_idx, columns=list(data))
     if values is None:
         df['__dummy__'] = 0
         kwargs = {'aggfunc': len, 'fill_value': 0}
