@@ -31,7 +31,8 @@ class LatexFormatter(TableFormatter):
     """
 
     def __init__(self, formatter, column_format=None, longtable=False,
-                 multicolumn=False, multicolumn_format=None, multirow=False):
+                 multicolumn=False, multicolumn_format=None, multirow=False,
+                 cellstyles=None):
         self.fmt = formatter
         self.frame = self.fmt.frame
         self.bold_rows = self.fmt.kwds.get('bold_rows', False)

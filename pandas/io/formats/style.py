@@ -7,7 +7,7 @@ from itertools import product
 from contextlib import contextmanager
 from uuid import uuid1
 import copy
-from collections import defaultdict, MutableMapping
+from collections import defaultdict, MutableMapping, OrderedDict
 
 try:
     from jinja2 import (
@@ -24,7 +24,7 @@ from pandas.core.dtypes.common import is_float, is_string_like
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
-from pandas.compat import range
+from pandas.compat import range, iteritems
 from pandas.core.config import get_option
 from pandas.core.generic import _shared_docs
 import pandas.core.common as com
@@ -46,6 +46,25 @@ def _mpl(func):
     else:
         raise ImportError(no_mpl_message.format(func.__name__))
 
+def _color_html_to_latex(color):
+    color = color.strip()
+    r, g, b = [int((int(color[i:i+2], 16) / 255 * 100)) for i in (1, 3, 5)]
+    
+    return "rgb:red,{};green,{};yellow,{}".format(r, g, b)
+
+
+ESCAPED = ['\\', '{', '}']
+
+def _latex_preserve(text):
+    for char in ESCAPED:
+        text = text.replace(char, 'pandas-repl-{}-'.format(ord(char)))
+    return text
+
+def _latex_restore(text):
+    for char in ESCAPED:
+        text = text.replace('pandas-repl-{}-'.format(ord(char)), char)
+    return text
+    
 
 class Styler(object):
     """
@@ -173,6 +192,78 @@ class Styler(object):
         formatter.write(excel_writer, sheet_name=sheet_name, startrow=startrow,
                         startcol=startcol, freeze_panes=freeze_panes,
                         engine=engine)
+
+#    @Appender(_shared_docs['to_html'] % dict(
+#        axes='index, columns', klass='Styler',
+#        axes_single_arg="{0 or 'index', 1 or 'columns'}",
+#        optional_by="""
+#            by : str or list of str
+#                Name or list of names which refer to the axis items.""",
+#        versionadded_to_html='\n    .. versionadded:: 0.23.1'))
+    def to_html(self, html_writer, na_rep='',
+                 float_format=None, columns=None, header=True, index=True,
+                 index_label=None, startrow=0, startcol=0, engine=None,
+                 merge_cells=True, encoding=None, inf_rep='inf', verbose=True):
+
+        from pandas.io.formats.html import HTMLFormatter
+        formatter = HTMLFormatter(self, na_rep=na_rep, columns=columns,
+#                                   header=header,
+                                   float_format=float_format, index=index,
+                                   index_label=index_label,
+#                                   merge_cells=merge_cells,
+                                   #inf_rep=inf_rep
+                                   )
+        formatter.write(html_writer, startrow=startrow,
+                        startcol=startcol, engine=engine)
+
+    # Order affects LaTeX code, and potentially visual result:
+    SUPPORTED_LATEX_ATTRS = OrderedDict(
+    [['background-color',
+      lambda value, color :
+      _latex_preserve("\cellcolor[HTML]{{{}}}{}".format(color.strip()[1:],
+                                                  value))]]
+      )
+
+    def to_latex(self, path, **kwargs):
+        translated = self._translate()
+        
+        new_shape = (self.data.shape[0] + self.data.columns.nlevels,
+                     self.data.shape[1] + self.data.index.nlevels)
+
+        out_df = pd.DataFrame(np.full(new_shape, ''))
+
+        for r_idx, row in enumerate(translated['head']):
+            for c_idx, cell in enumerate(row):
+                out_df.loc[r_idx, c_idx] = cell['value']
+
+        cellstyles = defaultdict(dict, {cell['selector'] : dict(cell['props']) 
+                                        for cell in translated['cellstyle']})
+
+        offset = self.data.columns.nlevels
+        for r_idx, row in enumerate(translated['body']):
+            r_idx += offset
+            for c_idx, cell in enumerate(row):
+                cell_val = cell['value']
+                cell_style = cellstyles[cell['id']]
+                for attr, func in iteritems(self.SUPPORTED_LATEX_ATTRS):
+                    if attr in cell_style:
+                        param = cell_style.pop(attr)
+                        cell_val = func(cell_val, param)
+                        print(param, cell_val)
+                if cell_style:
+                    print("Warning, unsupported attributes: "
+                          "{}".format(cell_style))
+
+                out_df.loc[r_idx, c_idx] = cell_val
+
+        kwargs['index'] = False
+        kwargs['header'] = False
+        with pd.option_context('display.max_colwidth', -1):
+            output = out_df.to_latex(**kwargs)
+        output = _latex_restore(output)
+
+        with open(path, 'w') as fout:
+            fout.write(output)
 
     def _translate(self):
         """
