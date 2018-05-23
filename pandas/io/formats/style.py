@@ -227,21 +227,14 @@ class Styler(object):
     def to_latex(self, path, **kwargs):
         translated = self._translate()
         
-        new_shape = (self.data.shape[0] + self.data.columns.nlevels,
-                     self.data.shape[1] + self.data.index.nlevels)
-
-        out_df = pd.DataFrame(np.full(new_shape, ''))
-
-        for r_idx, row in enumerate(translated['head']):
-            for c_idx, cell in enumerate(row):
-                out_df.loc[r_idx, c_idx] = cell['value']
+        out_df = self.data.copy()
+        for i in range(self.data.shape[1]):
+            out_df.iloc[:,i] = out_df.iloc[:,i].astype(str)
 
         cellstyles = defaultdict(dict, {cell['selector'] : dict(cell['props']) 
                                         for cell in translated['cellstyle']})
 
-        offset = self.data.columns.nlevels
         for r_idx, row in enumerate(translated['body']):
-            r_idx += offset
             for c_idx, cell in enumerate(row):
                 cell_val = cell['value']
                 cell_style = cellstyles[cell['id']]
@@ -257,7 +250,6 @@ class Styler(object):
                 out_df.loc[r_idx, c_idx] = cell_val
 
         kwargs['index'] = False
-        kwargs['header'] = False
         with pd.option_context('display.max_colwidth', -1):
             output = out_df.to_latex(**kwargs)
         output = _latex_restore(output)
