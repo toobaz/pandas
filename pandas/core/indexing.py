@@ -139,8 +139,6 @@ class _NDFrameIndexer(_NDFrameIndexerBase):
             # but will fail when the index is not present
             # see GH5667
             return self.obj._xs(label, axis=axis)
-        elif isinstance(label, tuple) and isinstance(label[axis], slice):
-            raise IndexingError('no slices here, handle elsewhere')
 
         return self.obj._xs(label, axis=axis)
 
@@ -976,11 +974,11 @@ class _NDFrameIndexer(_NDFrameIndexerBase):
         if self._is_nested_tuple_indexer(tup):
             return self._getitem_nested_tuple(tup)
 
-        # we maybe be using a tuple to represent multiple dimensions here
+        # A tuple is maybe a valid label (e.g. in a MultiIndex)
         ax0 = self.obj._get_axis(0)
         # ...but iloc should handle the tuple as simple integer-location
-        # instead of checking it as multiindex representation (GH 13797)
-        if isinstance(ax0, MultiIndex) and self.name != 'iloc':
+        # instead (GH 13797)
+        if self.name != 'iloc':
             result = self._handle_lowerdim_multi_index_axis0(tup)
             if result is not None:
                 return result
@@ -1877,7 +1875,7 @@ class _LocIndexer(_LocationIndexer):
             return self._get_slice_axis(key, axis=axis)
         elif com.is_bool_indexer(key):
             return self._getbool_axis(key, axis=axis)
-        elif is_list_like_indexer(key):
+        elif is_list_like_indexer(key) and not isinstance(key, tuple):
 
             # convert various list-like indexers
             # to a list of keys
