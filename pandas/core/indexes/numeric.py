@@ -176,16 +176,6 @@ class Int64Index(NumericIndex):
         # do not cache or you'll create a memory leak
         return self.values.view('i8')
 
-    @Appender(_index_shared_docs['_convert_scalar_indexer'])
-    def _convert_scalar_indexer(self, key, kind=None):
-        assert kind in ['ix', 'loc', 'getitem', 'iloc', None]
-
-        # don't coerce ilocs to integers
-        if kind != 'iloc':
-            key = self._maybe_cast_indexer(key)
-        return (super(Int64Index, self)
-                ._convert_scalar_indexer(key, kind=kind))
-
     def _wrap_joined_index(self, joined, other):
         name = self.name if self.name == other.name else None
         return Int64Index(joined, name=name)
@@ -233,16 +223,6 @@ class UInt64Index(NumericIndex):
     def asi8(self):
         # do not cache or you'll create a memory leak
         return self.values.view('u8')
-
-    @Appender(_index_shared_docs['_convert_scalar_indexer'])
-    def _convert_scalar_indexer(self, key, kind=None):
-        assert kind in ['ix', 'loc', 'getitem', 'iloc', None]
-
-        # don't coerce ilocs to integers
-        if kind != 'iloc':
-            key = self._maybe_cast_indexer(key)
-        return (super(UInt64Index, self)
-                ._convert_scalar_indexer(key, kind=kind))
 
     @Appender(_index_shared_docs['_convert_arr_indexer'])
     def _convert_arr_indexer(self, keyarr):
@@ -318,24 +298,11 @@ class Float64Index(NumericIndex):
             raise ValueError('Cannot convert NA to integer')
         return super(Float64Index, self).astype(dtype, copy=copy)
 
-    @Appender(_index_shared_docs['_convert_scalar_indexer'])
-    def _convert_scalar_indexer(self, key, kind=None):
-        assert kind in ['ix', 'loc', 'getitem', 'iloc', None]
-
-        if kind == 'iloc':
-            return self._validate_indexer('positional', key, kind)
-
-        return key
-
     @Appender(_index_shared_docs['_convert_slice_indexer'])
     def _convert_slice_indexer(self, key, kind=None):
         # if we are not a slice, then we are done
         if not isinstance(key, slice):
             return key
-
-        if kind == 'iloc':
-            return super(Float64Index, self)._convert_slice_indexer(key,
-                                                                    kind=kind)
 
         # translate to locations
         return self.slice_indexer(key.start, key.stop, key.step, kind=kind)

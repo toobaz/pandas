@@ -68,7 +68,7 @@ class TestPanel(object):
             pytest.raises(IndexError, f)
 
             # trying to use a label
-            with pytest.raises(ValueError):
+            with pytest.raises(TypeError):
                 p.iloc[tuple(['j', 'D'])]
 
             # GH

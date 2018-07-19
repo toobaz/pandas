@@ -1531,15 +1531,12 @@ class Index(IndexOpsMixin, PandasObject):
         Parameters
         ----------
         key : label of the slice bound
-        kind : {'ix', 'loc', 'getitem', 'iloc'} or None
+        kind : {'ix', 'loc', 'getitem'} or None
     """
 
     @Appender(_index_shared_docs['_convert_scalar_indexer'])
     def _convert_scalar_indexer(self, key, kind=None):
-        assert kind in ['ix', 'loc', 'getitem', 'iloc', None]
-
-        if kind == 'iloc':
-            return self._validate_indexer('positional', key, kind)
+        assert kind in ['ix', 'loc', 'getitem', None]
 
         if len(self) and not isinstance(self, ABCMultiIndex,):
 
@@ -1549,11 +1546,14 @@ class Index(IndexOpsMixin, PandasObject):
             # to be represented in the index
 
             if kind in ['getitem', 'ix'] and is_float(key):
-                if not self.is_floating():
+                if self.is_integer():
+                    return int(key)
+                elif not self.is_floating():
                     return self._invalid_indexer('label', key)
 
             elif kind in ['loc'] and is_float(key):
-
+                if self.is_integer() and key.is_integer():
+                    return int(key)
                 # we want to raise KeyError on string/mixed here
                 # technically we *could* raise a TypeError
                 # on anything but mixed though
@@ -1565,6 +1565,8 @@ class Index(IndexOpsMixin, PandasObject):
                     return self._invalid_indexer('label', key)
 
             elif kind in ['loc'] and is_integer(key):
+                if self.is_floating():
+                    return float(key)
                 if not self.holds_integer():
                     return self._invalid_indexer('label', key)
 
@@ -1573,28 +1575,22 @@ class Index(IndexOpsMixin, PandasObject):
     _index_shared_docs['_convert_slice_indexer'] = """
         Convert a slice indexer.
 
-        By definition, these are labels unless 'iloc' is passed in.
+        By definition, these are labels.
         Floats are not allowed as the start, step, or stop of the slice.
 
         Parameters
         ----------
         key : label of the slice bound
-        kind : {'ix', 'loc', 'getitem', 'iloc'} or None
+        kind : {'ix', 'loc', 'getitem'} or None
     """
 
     @Appender(_index_shared_docs['_convert_slice_indexer'])
     def _convert_slice_indexer(self, key, kind=None):
-        assert kind in ['ix', 'loc', 'getitem', 'iloc', None]
+        assert kind in ['ix', 'loc', 'getitem',  None]
 
         # if we are not a slice, then we are done
         if not isinstance(key, slice):
             return key
-
-        # validate iloc
-        if kind == 'iloc':
-            return slice(self._validate_indexer('slice', key.start, kind),
-                         self._validate_indexer('slice', key.stop, kind),
-                         self._validate_indexer('slice', key.step, kind))
 
         # potentially cast the bounds to integers
         start, stop, step = key.start, key.stop, key.step
@@ -1713,7 +1709,7 @@ class Index(IndexOpsMixin, PandasObject):
         ----------
         keyarr : Index (or sub-class)
             Indexer to convert.
-        kind : iloc, ix, loc, optional
+        kind : ix, loc, optional
 
         Returns
         -------
@@ -1722,7 +1718,7 @@ class Index(IndexOpsMixin, PandasObject):
 
     @Appender(_index_shared_docs['_convert_list_indexer'])
     def _convert_list_indexer(self, keyarr, kind=None):
-        if (kind in [None, 'iloc', 'ix'] and
+        if (kind in [None, 'ix'] and
                 is_integer_dtype(keyarr) and not self.is_floating() and
                 not isinstance(keyarr, ABCPeriodIndex)):
 
@@ -4150,13 +4146,13 @@ class Index(IndexOpsMixin, PandasObject):
         validate that we have appropriate typed bounds
         must be an integer
         """
-        assert kind in ['ix', 'loc', 'getitem', 'iloc']
+        assert kind in ['ix', 'loc', 'getitem']
 
         if key is None:
             pass
         elif is_integer(key):
             pass
-        elif kind in ['iloc', 'getitem']:
+        elif kind in ['getitem']:
             self._invalid_indexer(form, key)
         return key
 

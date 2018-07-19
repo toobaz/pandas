@@ -766,8 +766,9 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
         return False
 
     def _slice(self, slobj, axis=0, kind=None):
-        slobj = self.index._convert_slice_indexer(slobj,
-                                                  kind=kind or 'getitem')
+        if kind != 'iloc':
+            slobj = self.index._convert_slice_indexer(slobj,
+                                                      kind=kind or 'getitem')
         return self._get_values(slobj)
 
     def __getitem__(self, key):

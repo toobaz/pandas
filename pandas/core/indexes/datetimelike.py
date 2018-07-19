@@ -558,10 +558,10 @@ class DatetimeIndexOpsMixin(DatetimeLikeArrayMixin):
         Parameters
         ----------
         key : label of the slice bound
-        kind : {'ix', 'loc', 'getitem', 'iloc'} or None
+        kind : {'ix', 'loc', 'getitem'} or None
         """
 
-        assert kind in ['ix', 'loc', 'getitem', 'iloc', None]
+        assert kind in ['ix', 'loc', 'getitem', None]
 
         # we don't allow integer/float indexing for loc
         # we don't allow float indexing for ix/getitem

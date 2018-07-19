@@ -177,7 +177,7 @@ class _NDFrameIndexer(_NDFrameIndexerBase):
 
         try:
             return self._convert_to_indexer(key, is_setter=True)
-        except TypeError as e:
+        except ValueError as e:
 
             # invalid indexer type vs 'other' indexing errors
             if 'cannot do' in str(e):
@@ -2090,8 +2090,8 @@ class _iLocIndexer(_LocationIndexer):
             if len(arr) and (arr.max() >= l or arr.min() < -l):
                 raise IndexError("positional indexers are out-of-bounds")
         else:
-            raise ValueError("Can only index by location with "
-                             "a [{types}]".format(types=self._valid_types))
+            raise TypeError("Can only index by location with "
+                            "a [{types}]".format(types=self._valid_types))
 
     def _has_valid_setitem_indexer(self, indexer):
         self._has_valid_positional_setitem_indexer(indexer)
@@ -2186,11 +2186,7 @@ class _iLocIndexer(_LocationIndexer):
         if not need_slice(slice_obj):
             return obj.copy(deep=False)
 
-        slice_obj = self._convert_slice_indexer(slice_obj, axis)
-        if isinstance(slice_obj, slice):
-            return self._slice(slice_obj, axis=axis, kind='iloc')
-        else:
-            return self.obj._take(slice_obj, axis=axis)
+        return self._slice(slice_obj, axis=axis, kind='iloc')
 
     def _get_list_axis(self, key, axis=None):
         """
@@ -2242,24 +2238,31 @@ class _iLocIndexer(_LocationIndexer):
 
             return self._get_loc(key, axis=axis)
 
-    def _convert_to_indexer(self, obj, axis=None, is_setter=False):
-        """ much simpler as we only have to deal with our valid types """
+    def _convert_to_indexer(self, key, axis=None, is_setter=False):
+        """
+        iloc needs no conversion of keys: this method is for compatibility
+        with other indexer types, and only validates the key.
+
+        Parameters
+        ----------
+        key : int, int slice, listlike of integers, or boolean array
+            A valid key for iloc
+        axis : int
+            Dimension on which the indexing is being made
+
+        Returns
+        -------
+        'key' itself
+
+        Raises
+        ------
+        Same as _iLocIndexer._validate_key()
+        """
         if axis is None:
             axis = self.axis or 0
 
-        # make need to convert a float key
-        if isinstance(obj, slice):
-            return self._convert_slice_indexer(obj, axis)
-
-        elif is_float(obj):
-            return self._convert_scalar_indexer(obj, axis)
-
-        try:
-            self._validate_key(obj, axis)
-            return obj
-        except ValueError:
-            raise ValueError("Can only index by location with "
-                             "a [{types}]".format(types=self._valid_types))
+        self._validate_key(key, axis)
+        return key
 
 
 class _ScalarAccessIndexer(_NDFrameIndexer):

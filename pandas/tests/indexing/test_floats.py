@@ -202,57 +202,56 @@ class TestFloatIndexers(object):
         expected = 3
         assert result == expected
 
-    def test_scalar_integer(self):
-
+    @pytest.mark.parametrize('idx', [Int64Index(range(5)), RangeIndex(5)])
+    @pytest.mark.parametrize('dims', [1, 2])
+    def test_scalar_integer(self, idx, dims):
         # test how scalar float indexers work on int indexes
+        if dims == 1:
+            s = Series(np.arange(len(idx)))
+        else:
+            s = DataFrame(np.random.randn(len(idx), len(idx)),
+                          index=idx, columns=idx)
 
-        # integer index
-        for i in [Int64Index(range(5)), RangeIndex(5)]:
+        # coerce to equal int
+        for idxr, getitem in [(lambda x: x.ix, False),
+                              (lambda x: x.loc, False),
+                              (lambda x: x, True)]:
 
-            for s in [Series(np.arange(len(i))),
-                      DataFrame(np.random.randn(len(i), len(i)),
-                                index=i, columns=i)]:
+            with catch_warnings(record=True):
+                result = idxr(s)[3.0]
+            self.check(result, s, 3, getitem)
 
-                # coerce to equal int
-                for idxr, getitem in [(lambda x: x.ix, False),
-                                      (lambda x: x.loc, False),
-                                      (lambda x: x, True)]:
+        # coerce to equal int
+        for idxr, getitem in [(lambda x: x.ix, False),
+                              (lambda x: x.loc, False),
+                              (lambda x: x, True)]:
 
-                    with catch_warnings(record=True):
-                        result = idxr(s)[3.0]
-                    self.check(result, s, 3, getitem)
+            if isinstance(s, Series):
+                def compare(x, y):
+                    assert x == y
+                expected = 100
+            else:
+                compare = tm.assert_series_equal
+                if getitem:
+                    expected = Series(100,
+                                      index=range(len(s)), name=3)
+                else:
+                    expected = Series(100.,
+                                      index=range(len(s)), name=3)
 
-                # coerce to equal int
-                for idxr, getitem in [(lambda x: x.ix, False),
-                                      (lambda x: x.loc, False),
-                                      (lambda x: x, True)]:
+            s2 = s.copy()
+            with catch_warnings(record=True):
+                idxr(s2)[3.0] = 100
 
-                    if isinstance(s, Series):
-                        def compare(x, y):
-                            assert x == y
-                        expected = 100
-                    else:
-                        compare = tm.assert_series_equal
-                        if getitem:
-                            expected = Series(100,
-                                              index=range(len(s)), name=3)
-                        else:
-                            expected = Series(100.,
-                                              index=range(len(s)), name=3)
+                result = idxr(s2)[3.0]
+                compare(result, expected)
 
-                    s2 = s.copy()
-                    with catch_warnings(record=True):
-                        idxr(s2)[3.0] = 100
+                result = idxr(s2)[3]
+                compare(result, expected)
 
-                        result = idxr(s2)[3.0]
-                        compare(result, expected)
-
-                        result = idxr(s2)[3]
-                        compare(result, expected)
-
-                # contains
-                # coerce to equal int
-                assert 3.0 in s
+        # contains
+        # coerce to equal int
+        assert 3.0 in s
 
     def test_scalar_float(self):
 

@@ -459,7 +459,7 @@ class TestiLoc(Base):
         pytest.raises(IndexError, df.iloc.__getitem__, tuple([10, 5]))
 
         # trying to use a label
-        pytest.raises(ValueError, df.iloc.__getitem__, tuple(['j', 'D']))
+        pytest.raises(TypeError, df.iloc.__getitem__, tuple(['j', 'D']))
 
     def test_iloc_getitem_doc_issue(self):
 
