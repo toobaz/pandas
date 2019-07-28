@@ -402,6 +402,8 @@ def unstack(obj, level, fill_value=None):
         else:
             level = level[0]
 
+    level = obj.index._get_level_number(level)
+
     if isinstance(obj, DataFrame):
         if isinstance(obj.index, MultiIndex):
             return _unstack_frame(obj, level, fill_value=fill_value)
